@@ -1,0 +1,47 @@
+data_L_qawp.txt 数据说明
+
+一、每行记录什么
+每行对应一个仿真步，间隔0.001 s（1000 Hz）。step从1开始，记录步结束时刻的数据，时间t=step×0.001 s。
+
+一行格式：
+step 0 qw qx qy qz ax ay az wx wy wz;1 qw qx qy qz ax ay az wx wy wz;2 qw qx qy qz ax ay az wx wy wz;3 qw qx qy qz ax ay az wx wy wz;4 qw qx qy qz ax ay az wx wy wz;5 qw qx qy qz ax ay az wx wy wz;u0 u1 u2;V x0 y0 z0 x1 y1 z1 x2 y2 z2 x3 y3 z3 x4 y4 z4 x5 y5 z5 x6 y6 z6
+
+分号分成8块：6个节点块、1个控制块、1个端点位置块。只有第一块带step。
+节点0～5依次对应plate0～plate5，每段的字段顺序为：
+  节点编号；四元数qw qx qy qz；比力ax ay az；角速度wx wy wz。
+
+二、世界坐标系W
+世界坐标系固定在场景中，是右手坐标系，不随机器人移动。
+  原点：(0,0,0)，位于地面z=0上、crack1板中心的正下方。
+  +X：沿裂缝长度方向，也是初始展开时从plate0指向plate5的方向。
+  +Y：横跨裂缝，从crack2一侧指向crack1一侧。
+  +Z：竖直向上。重力向量g_W=(0,0,-9.81) m/s^2。
+机器人初始plate0原点为(0.200,-0.110,0.020) m，并非世界原点；本次运动总体朝-X方向。
+
+三、IMU局部坐标系S及节点数据
+每个节段各有一个仿真IMU，设在对应plate的body原点，三轴与该plate局部xyz轴重合，无额外安装偏移或安装角。
+局部+x沿该节段起点指向末端；初始时局部+z向上，+y按右手系确定。
+初始六个IMU的轴均与世界轴平行同向，运动后各自随所属节段旋转。
+
+qw qx qy qz：IMU相对于世界的姿态四元数，顺序为w,x,y,z，无单位。
+其旋转矩阵R_WS将局部分量转换到世界分量：v_W=R_WS v_S。
+
+ax ay az：IMU局部坐标系下的三轴比力，单位m/s^2，模拟加速度计输出。
+  f_S = R_WS^T (a_W - g_W)
+其中a_W是IMU所在原点的世界系线加速度，由相邻步世界系线速度差分计算；R_WS^T表示转置。
+静止且IMU轴与世界轴对齐时，比力为(0,0,+9.81) m/s^2；自由落体时约为(0,0,0)。
+
+wx wy wz：IMU局部坐标系下绕自身x、y、z轴的角速度，单位rad/s，正方向按右手定则。
+  omega_S = R_WS^T omega_W
+
+四、三个控制位
+u0：hinge0_1，plate0与plate1之间的驱动关节。
+u1：hinge2_3，plate2与plate3之间的驱动关节。
+u2：hinge4_5，plate4与plate5之间的驱动关节。
+驱动上电为1，断电为 0，驱动时序例如 1 0 0，为第一节段展开，后两节段折叠顶住裂缝。
+
+五、七个端点位置
+V是位置段标记，后面每3个数为一个点的世界坐标(x,y,z)，单位m。
+对应关系：plate0为V0→V1，plate1为V1→V2，plate2为V2→V3，plate3为V3→V4，plate4为V4→V5，plate5为V5→V6。
+比力和角速度使用各IMU局部坐标系，七个端点位置始终使用世界坐标系。
+ni

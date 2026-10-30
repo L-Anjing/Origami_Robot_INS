@@ -1,0 +1,147 @@
+<mujoco model="ZShapedRobot_Horizontal">
+  <compiler angle="degree"/>
+  <option timestep="0.001"
+          gravity="0 0 -9.81"
+          solver="PGS"
+          iterations="100"
+          tolerance="1e-6"
+          cone="elliptic"/>
+
+  <default>
+    <geom density="2400"
+          friction="5.0 1.0 0.005"
+          margin="0.002"
+          solref="0.005 1"
+          solimp="0.9 0.95 0.001"/>
+  </default>
+
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512"
+             rgb1="1 1 1" rgb2="0 0 0"/>
+    <material name="grid" texture="grid" texrepeat="2 2" texuniform="true"
+              reflectance="0.6"/>
+  </asset>
+
+  <visual>
+    <global offwidth="1920" offheight="1080"/>
+    <quality shadowsize="8192" offsamples="24"/>
+    <headlight ambient="0.4 0.4 0.4"
+               diffuse="0.8 0.8 0.8"
+               specular="0.1 0.1 0.1"/>
+  </visual>
+
+  <worldbody>
+    <light pos="0 0 0.6" dir="0 0 1" diffuse="0.7 0.7 0.7"/>
+    <!-- <geom name="floor" pos="0 0 0" type="plane" size="5 5 0.1" rgba="1 1 1 0.2" material="grid"/> -->
+    <!-- 地板颜色为黑色 -->
+    <geom name="floor" pos="0 0 0" type="plane" size="5 5 0.1" rgba="0.7 0.7 0.7 1" contype="1" conaffinity="1"/>
+
+    <geom name="crack1" type="box" size="0.5 0.1 0.025" pos="0  0  0.025" rgba="0.2 0.2 0.2 1"
+          contype="1" conaffinity="1"
+          margin="0.003"
+          solref="0.005 1"
+          solimp="0.9 0.95 0.001"/>
+    <geom name="crack2" type="box" size="0.5 0.1 0.025" pos="0  -0.232  0.025" rgba="0.2 0.2 0.2 1" 
+          contype="1" conaffinity="1"
+          margin="0.003"
+          solref="0.005 1"
+          solimp="0.9 0.95 0.001"/>
+
+    <!-- 放倒后的机器人，原来的z轴变为y轴 -->
+    <body name="plate0" pos="0.2 -0.12 0.001">  <!-- 抬高一点避免穿透地面 -->
+      <joint name="root_free" type="free" damping="0.01"/>
+      <geom name="geom0" type="box" size="0.025 0.001 0.025"
+            pos="0.025 0.001 0"
+            rgba="0.8 0.2 0.2 1"
+            contype="1" conaffinity="1"/>
+
+      <body name="plate1" pos="0.0501 0 0">
+        <joint name="hinge0_1"
+               type="hinge"
+               axis="0 0 1"  
+               range="0 90"
+               limited="true"
+               damping="0.01"
+               solreflimit="0.01 1"
+               solimplimit="0.9 0.95 0.001"/>
+        <geom name="geom1" type="box" size="0.025 0.001 0.025"
+              pos="0.025 0.001 0"
+              rgba="0.2 0.8 0.2 1"
+              contype="1" conaffinity="1"/>
+
+        <body name="plate2" pos="0.0501 0 0">
+          <joint name="hinge1_2"
+                 type="hinge"
+                 axis="0 0 -1" 
+                 range="0 90"
+                 limited="true"
+                 damping="0.01"
+                 solreflimit="0.02 1"
+                 solimplimit="0.9 0.95 0.001"/>
+          <geom name="geom2" type="box" size="0.025 0.001 0.025"
+                pos="0.025 0.001 0"
+                rgba="0.2 0.2 0.8 1"
+                contype="1" conaffinity="1"/>
+
+          <body name="plate3" pos="0.0501 0 0">
+            <joint name="hinge2_3"
+                   type="hinge"
+                   axis="0 0 1"  
+                   range="0 90"
+                   limited="true"
+                   damping="0.01"
+                   solreflimit="0.02 1"
+                   solimplimit="0.9 0.95 0.001"/>
+            <geom name="geom3" type="box" size="0.025 0.001 0.025"
+                  pos="0.025 0.001 0"
+                  rgba="0.8 0.8 0.2 1"
+                  contype="1" conaffinity="1"/>
+          
+            <body name="plate4" pos="0.0501 0 0">
+              <joint name="hinge3_4"
+                    type="hinge"
+                    axis="0 0 -1" 
+                    range="0 90"
+                    limited="true"
+                    damping="0.01"
+                    solreflimit="0.02 1"
+                    solimplimit="0.9 0.95 0.001"/>
+              <geom name="geom4" type="box" size="0.025 0.001 0.025"
+                    pos="0.025 0.001 0"
+                    rgba="0.5 0 0.5 1"
+                    contype="1" conaffinity="1"/>
+              
+              <body name="plate5" pos="0.0501 0 0">
+                <joint name="hinge4_5"
+                    type="hinge"
+                    axis="0 0 1"  
+                    range="0 90"
+                    limited="true"
+                    damping="0.01"
+                    solreflimit="0.02 1"
+                    solimplimit="0.9 0.95 0.001"/>
+                <geom name="geom5" type="box" size="0.025 0.001 0.025"
+                    pos="0.025 0.001 0"
+                    rgba="1 0.647 0 1"
+                    contype="1" conaffinity="1"/>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>   
+  </worldbody>
+
+  <actuator>
+    <position joint="hinge0_1" ctrllimited="true" ctrlrange="0 1.5"/>
+    <!-- <position joint="hinge1_2" ctrllimited="true" ctrlrange="0 1.0"/> -->
+    <position joint="hinge2_3" ctrllimited="true" ctrlrange="0 1.5"/>
+    <!-- <position joint="hinge3_4" ctrllimited="true" ctrlrange="0 1.0"/> -->
+    <position joint="hinge4_5" ctrllimited="true" ctrlrange="0 1.5"/>
+  </actuator>
+
+  <sensor>
+    <framepos name="contact_pos" objtype="geom" objname="crack1"/>
+    <framepos name="contact_pos2" objtype="geom" objname="crack2"/>
+ </sensor>
+</mujoco>

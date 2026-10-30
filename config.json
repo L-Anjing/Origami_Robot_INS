@@ -1,0 +1,122 @@
+{
+  "sample_rate_hz": 1000.0,
+  "gravity_m_s2": 9.81,
+  "integration": "step_end",
+  "initial_velocity_m_s": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "initial_velocity_epoch": "simulation_start",
+  "zupt": {
+    "gyro_threshold_rad_s": 0.05,
+    "force_norm_tolerance_m_s2": 0.3,
+    "minimum_duration_s": 0.03,
+    "detector": "imu",
+    "drive_before_s": 0.02,
+    "drive_after_s": 0.1
+  },
+  "truth": {
+    "endpoint_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "mapping_source": "用户于本次会话明确确认：节点 i 的 body 原点与 Vi 严格重合 (i=0...5)",
+    "velocity_method": "step_end_difference",
+    "acceleration_consistency_warning_m_s2": 0.01
+  },
+  "robot": {
+    "initial_root_W_m": [
+      0.2,
+      -0.11,
+      0.02
+    ],
+    "initial_root_source": "read_data_L_qawp.txt: t=0 plate0 origin; XML root pose is different",
+    "geometry": {
+      "length_m": 0.05,
+      "width_m": 0.05,
+      "thickness_m": 0.002,
+      "logged_terminal_offset_S_m": [
+        0.0501,
+        0.0,
+        0.0
+      ],
+      "logged_terminal_source": "all recorded V5->V6 offsets verified at 0.0501m; physical plate5 edge remains 0.05m"
+    },
+    "ahrs": {
+      "gain_s_inv": 0.5,
+      "force_tolerance_m_s2": 0.3,
+      "innovation_limit_deg": 10.0,
+      "minimum_reliable_s": 0.02
+    },
+    "stationary": {
+      "window_s": 0.02,
+      "sigma_accel_m_s2": 0.1,
+      "sigma_gyro_rad_s": 0.02,
+      "glrt_threshold": 9.0,
+      "gyro_limit_rad_s": 0.05,
+      "force_tolerance_m_s2": 0.3,
+      "minimum_stationary_s": 0.03
+    },
+    "phase": {
+      "relevant_drives": [
+        0,
+        1,
+        2
+      ],
+      "stable_off_min_s": 0.01,
+      "post_falling_delay_s": 0.01,
+      "post_falling_window_s": 0.12
+    },
+    "quality": {
+      "accelerometer_range_g": 16.0,
+      "gyroscope_range_deg_s": 2000.0,
+      "impact_force_norm_g": 3.0,
+      "impact_noise_multiplier": 10.0,
+      "source": "Tunable hardware-range and aiding assumptions; not a calibrated MPU6050 noise model. Raw simulation inputs remain unclipped."
+    },
+    "eskf": {
+      "noise_density": {
+        "gyro_rad_s_sqrt_hz": 0.003,
+        "accel_m_s2_sqrt_hz": 0.05,
+        "gyro_bias_random_walk": 0.0001,
+        "accel_bias_random_walk": 0.001
+      },
+      "initial_std": {
+        "position_m": 0.001,
+        "velocity_m_s": 0.05,
+        "attitude_deg": 1.0,
+        "gyro_bias_rad_s": 0.01,
+        "accel_bias_m_s2": 0.1
+      },
+      "initial_gyro_bias_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_accel_bias_m_s2": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "zupt_velocity_std_m_s": 0.01,
+      "zupt_nis_limit": 16.0,
+      "zupt_min_interval_s": 0.01,
+      "covariance_check_every": 100,
+      "covariance_negative_tolerance": 1e-08,
+      "assumptions": "All noise densities, prior uncertainties and gates are adjustable uncalibrated assumptions."
+    },
+    "zupt_modes": [
+      "none",
+      "glrt",
+      "phase"
+    ],
+    "default_zupt_mode": "phase"
+  },
+  "reference_imu_index": 0,
+  "precompute_reference_indices": []
+}
