@@ -2,3 +2,6 @@
 __pycache__/
 outputs/
 /img/
+build/
+install/
+log/

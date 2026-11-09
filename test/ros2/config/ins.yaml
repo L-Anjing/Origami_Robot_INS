@@ -1,0 +1,26 @@
+inertial_odometry:
+  ros__parameters:
+    imu_topic: /imu/data
+    imu_frame: imu_link
+    odom_frame: odom
+    # Body coincides with the IMU. No unmeasured IMU-to-robot extrinsic is assumed.
+    body_frame: imu_link
+    raw_body_frame: imu_raw
+    initial_static_seconds: 2.0
+    stationary_window_seconds: 0.05
+    minimum_stationary_seconds: 0.05
+    gyro_threshold_rad_s: 0.08
+    force_tolerance_m_s2: 0.30
+    zupt_mode: glrt
+    path_rate_hz: 20.0
+    visualization_rate_hz: 10.0
+    max_path_points: 20000
+    max_integration_interval_seconds: 0.25
+    input_timeout_seconds: 0.50
+    protect_zupt_position: true
+    # Application continuity tolerances; these report anomalies without clipping states.
+    health:
+      max_speed_m_s: 2.0
+      step_tolerance_m: 0.02
+      max_position_correction_m: 0.10
+      max_position_std_m: 0.50

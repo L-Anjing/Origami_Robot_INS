@@ -1,0 +1,98 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Global Options:
+    Background Color: 30; 32; 38
+    Fixed Frame: odom
+    Frame Rate: 30
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Ground grid (0.1 m)
+      Enabled: true
+      Cell Size: 0.1
+      Plane Cell Count: 100
+      Color: 80; 85; 95
+      Reference Frame: odom
+    - Class: rviz_default_plugins/Path
+      Name: Current continuous trajectory (cyan)
+      Enabled: true
+      Topic:
+        Value: /path
+        Reliability Policy: Reliable
+        Durability Policy: Transient Local
+        Depth: 1
+        History Policy: Keep Last
+      Color: 30; 190; 255
+      Alpha: 1
+      Line Style: Lines
+      Line Width: 0.006
+      Buffer Length: 1
+      Pose Style: None
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Previous trajectory segments (cyan)
+      Enabled: true
+      Topic:
+        Value: /ins/trajectory_segments
+        Reliability Policy: Reliable
+        Durability Policy: Transient Local
+        Depth: 1
+        History Policy: Keep Last
+    - Class: rviz_default_plugins/Path
+      Name: Raw INS comparison (orange)
+      Enabled: false
+      Topic:
+        Value: /ins/raw_path
+        Reliability Policy: Reliable
+        Durability Policy: Transient Local
+        Depth: 1
+        History Policy: Keep Last
+      Color: 255; 150; 40
+      Alpha: 0.7
+      Line Style: Lines
+      Line Width: 0.004
+      Buffer Length: 1
+      Pose Style: None
+    - Class: rviz_default_plugins/Axes
+      Name: Current IMU attitude (XYZ)
+      Enabled: true
+      Reference Frame: imu_link
+      Length: 0.10
+      Radius: 0.004
+    - Class: rviz_default_plugins/TF
+      Name: Coordinate frames
+      Enabled: false
+      Show Names: false
+      Show Axes: true
+      Show Arrows: false
+      Frame Timeout: 1000000000
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Heading, origin, ZUPT and red continuity faults
+      Enabled: true
+      Topic:
+        Value: /ins/markers
+        Reliability Policy: Reliable
+        Durability Policy: Transient Local
+        Depth: 1
+        History Policy: Keep Last
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Name: Current View
+      Target Frame: odom
+      Distance: 6.0
+      Focal Point: {X: -0.5, Y: -0.5, Z: 0}
+      Pitch: 0.65
+      Yaw: 0.8
+      Near Clip Distance: 0.001
+Window Geometry:
+  Width: 1400
+  Height: 900

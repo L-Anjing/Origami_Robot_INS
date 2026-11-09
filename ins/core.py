@@ -12,10 +12,14 @@ class INS:
     only the error covariance and measurement updates. The six-node shape AHRS
     is a separate chain and is never changed by this filter's ZUPT injection.
     Step-end p[k]=p[k-1]+v[k]dt matches the documented simulator convention.
+    Real IMU recordings select constant_acceleration: p += v*dt + a*dt²/2.
     """
     def __init__(self, position, velocity, ahrs_config, filter_config,
                  gravity=9.81, backend="six_axis", covariance=True,
-                 prescribed_orientation=False):
+                 prescribed_orientation=False, position_integration="step_end"):
+        if position_integration not in ("step_end", "constant_acceleration"):
+            raise ValueError("Unknown position integration method")
+        self.position_integration = position_integration
         self.position = np.array(position, dtype=float, copy=True)
         self.velocity = np.array(velocity, dtype=float, copy=True)
         if self.position.shape != (3,) or self.velocity.shape != (3,):
@@ -64,8 +68,9 @@ class INS:
                 gyro[None], force[None], dt, [feedback_allowed])[0]
         rotation = quaternion_matrix(self.quaternion)
         self.acceleration = rotation @ corrected_force + self.gravity
+        position_factor = 1. if self.position_integration == "step_end" else .5
+        self.position += self.velocity * dt + position_factor * self.acceleration * dt**2
         self.velocity += self.acceleration * dt
-        self.position += self.velocity * dt
         if self.P is not None:
             jr = right_jacobian(omega * dt)
             if self.prescribed_orientation:
@@ -86,12 +91,12 @@ class INS:
             phi[3:6, 6:9] = sensitivity @ a_theta * dt
             phi[3:6, 9:12] = sensitivity @ b_theta * dt
             phi[3:6, 12:15] = (sensitivity @ c_theta - rotation) * dt
-            phi[0:3, 6:15] = phi[3:6, 6:15] * dt
+            phi[0:3, 6:15] = position_factor * phi[3:6, 6:15] * dt
             gain = np.zeros((15, 12))
             gain[6:9, 0:3], gain[6:9, 3:6] = gyro_noise_theta, accel_noise_theta
             gain[3:6, 0:3] = sensitivity @ gyro_noise_theta * dt
             gain[3:6, 3:6] = sensitivity @ accel_noise_theta * dt - rotation
-            gain[0:3, :6] = gain[3:6, :6] * dt
+            gain[0:3, :6] = position_factor * gain[3:6, :6] * dt
             gain[9:12, 6:9], gain[12:15, 9:12] = np.eye(3), np.eye(3)
             if self.prescribed_orientation:
                 phi[6:12, :] = 0.
@@ -107,8 +112,16 @@ class INS:
                 raise FloatingPointError("Nonfinite ESKF covariance")
         return self.snapshot()
 
-    def zupt_update(self, candidate, measurement_valid=True):
-        """z=0, h(x)=v. False/rejected candidates change NO state or covariance."""
+    def zupt_update(self, candidate, measurement_valid=True, max_position_correction_m=None):
+        """z=0, h(x)=v; optionally guard the inferred position correction.
+
+        If guarded, set the position rows of K to zero BEFORE the Joseph update.
+        Velocity, attitude and bias rows still use the accepted zero velocity.
+        Position uncertainty is retained rather than shrunk for an unapplied dx.
+        """
+        if max_position_correction_m is not None and (
+                not np.isfinite(max_position_correction_m) or max_position_correction_m < 0):
+            raise ValueError("Position correction limit must be finite and nonnegative")
         if not candidate or not measurement_valid or self.P is None:
             return {"accepted": False, "nis": 0., "rejected_nis": False}
         h = np.zeros((3, 15)); h[:, 3:6] = np.eye(3)
@@ -119,6 +132,11 @@ class INS:
         if not np.isfinite(nis) or nis > self.config["zupt_nis_limit"]:
             return {"accepted": False, "nis": nis, "rejected_nis": True}
         k = np.linalg.solve(innovation_cov, h @ self.P).T
+        proposed_position = (k @ innovation)[:3]
+        proposed_norm = float(np.linalg.norm(proposed_position))
+        position_rejected = max_position_correction_m is not None and proposed_norm > max_position_correction_m
+        if position_rejected:
+            k[:3, :] = 0.
         dx = k @ innovation
         identity_minus_kh = np.eye(15) - k @ h
         posterior = identity_minus_kh @ self.P @ identity_minus_kh.T + k @ r @ k.T
@@ -134,7 +152,10 @@ class INS:
         self.P = reset @ posterior @ reset.T
         self.P = .5 * (self.P + self.P.T)
         self.last_injection = dx
-        return {"accepted": True, "nis": nis, "rejected_nis": False}
+        return {"accepted": True, "nis": nis, "rejected_nis": False,
+                "position_update_rejected": bool(position_rejected),
+                "proposed_position_correction_m": proposed_norm,
+                "proposed_position_correction": proposed_position.copy()}
 
     def snapshot(self):
         return {"position": self.position.copy(), "velocity": self.velocity.copy(),
