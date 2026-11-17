@@ -1,0 +1,20 @@
+{
+  "imu_100hz.txt": {
+    "frames": 4367,
+    "updates": 1129,
+    "max_absolute_error": 1.2079226507921703e-12
+  },
+  "imu_500hz.txt": {
+    "frames": 12166,
+    "updates": 743,
+    "max_absolute_error": 3.739231146937527e-12
+  },
+  "estimated": {
+    "frames": 10864,
+    "max_absolute_error": 2.0902085617890975e-11
+  },
+  "ground_truth": {
+    "frames": 10864,
+    "max_absolute_error": 2.049262148862141e-11
+  }
+}

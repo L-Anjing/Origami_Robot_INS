@@ -1,0 +1,33 @@
+<launch>
+  <arg name="replay" default="true"/>
+  <arg name="data_file" default="$(find-pkg-share origami_ins)/data/imu_100hz.txt"/>
+  <arg name="params_file" default="$(find-pkg-share origami_ins)/config/ins.yaml"/>
+  <arg name="config_file" default="$(find-pkg-share origami_ins)/config/real_imu.json"/>
+  <arg name="imu_topic" default="/imu/data"/>
+  <arg name="imu_frame" default="imu_link"/>
+  <arg name="playback_rate" default="1.0"/>
+  <arg name="start_delay_s" default="2.0"/>
+  <arg name="zupt_mode" default="glrt"/>
+  <arg name="use_sim_time" default="$(var replay)"/>
+  <arg name="use_rviz" default="true"/>
+  <node pkg="origami_ins" exec="inertial_odometry" name="inertial_odometry" output="screen">
+    <param from="$(var params_file)"/>
+    <param name="config_file" value="$(var config_file)"/>
+    <param name="imu_topic" value="$(var imu_topic)"/>
+    <param name="imu_frame" value="$(var imu_frame)"/>
+    <param name="body_frame" value="$(var imu_frame)"/>
+    <param name="zupt_mode" value="$(var zupt_mode)"/>
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+  <node pkg="origami_ins" exec="imu_replay" name="imu_replay" output="screen" if="$(var replay)">
+    <param name="data_file" value="$(var data_file)"/>
+    <param name="imu_topic" value="$(var imu_topic)"/>
+    <param name="imu_frame" value="$(var imu_frame)"/>
+    <param name="playback_rate" value="$(var playback_rate)"/>
+    <param name="start_delay_s" value="$(var start_delay_s)"/>
+    <param name="publish_clock" value="$(var use_sim_time)"/>
+  </node>
+  <node pkg="rviz2" exec="rviz2" name="rviz2" output="screen" args="-d $(find-pkg-share origami_ins)/rviz_cfg/ins.rviz" if="$(var use_rviz)">
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+</launch>

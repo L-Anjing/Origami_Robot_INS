@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>origami_ins</name>
+  <version>1.0.0</version>
+  <description>Six-IMU shape reconstruction and single-reference error-state inertial odometry.</description>
+  <maintainer email="li@example.com">li</maintainer>
+  <license>Proprietary</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>eigen</depend>
+  <depend>nlohmann-json-dev</depend>
+  <depend>tinyxml2_vendor</depend>
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>tf2_ros</depend>
+  <depend>std_srvs</depend>
+  <depend>diagnostic_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>rosgraph_msgs</depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>launch_xml</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>

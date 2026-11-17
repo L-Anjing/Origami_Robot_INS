@@ -6,11 +6,11 @@ function fig = animate_robot(matFile, varargin)
 % No orientation/position estimation is performed here. Graphics are created
 % once; only transforms, line data and labels are updated during playback.
 % Absolute errors use the verified Vi directly: no fitting or initial alignment.
-% Requires only base MATLAB. Python exports MAT v5 using scipy.io.savemat.
+% Requires only base MATLAB. The native C++ exporter writes MAT v5.
 
 if nargin < 1 || isempty(matFile)
     projectRoot = fileparts(fileparts(mfilename('fullpath')));
-    matFile = fullfile(projectRoot, 'outputs', 'robot', 'robot_odometry.mat');
+    matFile = fullfile(projectRoot, 'outputs', 'robot', 'estimated', 'robot_odometry.mat');
 end
 p = inputParser;
 p.addParameter('Mode', 'estimated', @(x) ischar(x) || isstring(x));
@@ -25,7 +25,7 @@ p.addParameter('Visible', 'on', @(x) any(strcmpi(x, {'on','off'})));
 p.addParameter('MaxFrames', Inf, @(x) isscalar(x) && x > 0);
 p.parse(varargin{:});
 opt = p.Results;
-assert(isfile(matFile), 'Robot:MissingMAT', 'MAT file missing: %s. Run python main.py first.', matFile);
+assert(isfile(matFile), 'Robot:MissingMAT', 'MAT file missing: %s. Run origami_ins simulation and export-mat first.', matFile);
 D = load(matFile);
 required = {'schema_version','time_s','controls','modes', ...
     'plate_vertices_S_m','plate_faces_one_based','crack_centers_W_m', ...
@@ -34,7 +34,7 @@ required = {'schema_version','time_s','controls','modes', ...
 for j = 1:numel(required)
     assert(isfield(D, required{j}), 'Robot:Schema', 'Missing MAT field %s.', required{j});
 end
-assert(D.schema_version == 2, 'Robot:Schema', 'Expected schema 2. Regenerate MAT using the current python main.py.');
+assert(D.schema_version == 2, 'Robot:Schema', 'Expected schema 2. Regenerate MAT using origami_ins export-mat.');
 t = D.time_s(:)'; n = numel(t);
 assert(n >= 2 && all(isfinite(t)) && all(diff(t) > 0), 'Robot:Time', 'Invalid time vector.');
 assert(max(abs(diff(t)-0.001)) < 1e-10, 'Robot:Time', 'Expected 1000 Hz unresampled data.');
@@ -93,7 +93,7 @@ assert(~isempty(methodIndex), 'Robot:Method', 'Method must be raw or eskf.');
 if isempty(opt.ReferenceIMU), reference = double(D.default_reference_index); else, reference = opt.ReferenceIMU; end
 referenceMenuIndex = find(referenceIndices==reference,1);
 assert(~isempty(referenceMenuIndex), 'Robot:Reference', ...
-    'S%d is not precomputed. Run python main.py --reference-imu %d, or --precompute-references with that index.',reference,reference);
+    'S%d is not precomputed. Set reference_imu_index to %d, or add it to precompute_reference_indices, then rerun origami_ins simulation.',reference,reference);
 referenceLabels = arrayfun(@(x) sprintf('S%d',x), referenceIndices, 'UniformOutput',false);
 policyKeys = {'none','glrt','phase'};
 policyLabels = {'No ZUPT', 'GLRT only', 'Phase-assisted GLRT'};
