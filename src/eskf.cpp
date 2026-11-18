@@ -147,6 +147,9 @@ void ErrorStateKalmanFilter::propagate(const V3D& gyro, const V3D& force, double
     Eigen::Matrix<double, 12, 1> d;
     for (int i = 0; i < 12; ++i)
         d[i] = densities[i / 3] * densities[i / 3] * dt * multiplier * multiplier;
+    noise_mapping = G;
+    noise_variance = d;
+    process_noise = (G * d.asDiagonal() * G.transpose()).eval();
     P = (phi * P * phi.transpose() + G * d.asDiagonal() * G.transpose()).eval();
     P = (.5 * (P + P.transpose())).eval();
     transition = phi;

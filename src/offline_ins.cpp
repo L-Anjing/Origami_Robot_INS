@@ -1,5 +1,7 @@
 #include "mat_export.h"
+#include "multi_imu_experiment.h"
 #include "robot_odometry.h"
+#include "shape_experiment.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -16,7 +18,8 @@ int main(int argc, char** argv)
         {
             std::cerr << "Usage: origami_ins real CONFIG DATA OUTPUT [STATIC_SECONDS] "
                          "[glrt|none]\n       origami_ins simulation CONFIG DATA OUTPUT "
-                         "MODEL [estimated|ground_truth|all]\n";
+                         "MODEL [estimated|ground_truth|all]\n"
+                         "       origami_ins shape-fusion CONFIG DATA OUTPUT MODEL\n";
             return 2;
         }
         std::ifstream file(argv[2]);
@@ -25,7 +28,26 @@ int main(int argc, char** argv)
         origami::Json c;
         file >> c;
         std::string task = argv[1];
-        if (task == "simulation")
+        if (task == "multi-imu-run" || task == "multi-imu-suite")
+        {
+            if (argc != 6)
+                throw std::invalid_argument(
+                    "Usage: origami_ins multi-imu-suite CONFIG DATA OUTPUT MODEL");
+            auto report = origami::run_multi_imu_experiment(c, argv[3], argv[4], argv[5],
+                                                            task == "multi-imu-suite");
+            std::cout << "Saved joint filter results; cases=" << report.value("case_count", 1)
+                      << '\n';
+        }
+        else if (task == "shape-fusion" || task == "shape-only")
+        {
+            if (argc != 6)
+                throw std::invalid_argument(
+                    "Usage: origami_ins shape-fusion CONFIG DATA OUTPUT MODEL");
+            auto result =
+                origami::run_shape_experiment(c, argv[3], argv[4], argv[5], task == "shape-only");
+            std::cout << result.dump(2) << '\n';
+        }
+        else if (task == "simulation")
         {
             if (argc < 6)
                 throw std::invalid_argument("Model path required");

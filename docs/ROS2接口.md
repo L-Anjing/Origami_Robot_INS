@@ -1,6 +1,6 @@
 # ROS 2 接口
 
-包 `origami_ins`，原生可执行文件 `inertial_odometry` 与 `imu_replay`，节点同名。统一根目录ament构建，无rclpy或ament_cmake_python依赖。
+包 `origami_ins`，原生可执行文件 `inertial_odometry` 、`imu_replay` 与 `imu_record`，节点同名。统一根目录ament构建，无rclpy或ament_cmake_python依赖。
 
 | 接口 | 类型 | 约定 |
 |---|---|---|
@@ -39,3 +39,7 @@ build/native_ros/origami_ins/test_ros_interfaces build/native_ros/origami_ins \
 ```
 
 该测试为单独可执行文件，不自动加入默认CTest，避免无网络权限的构建环境误报。覆盖Odometry、历史Path、动态窗口、reset、回放IMU、时钟和pause服务。
+
+## TXT 录制
+
+`imu_record` 使用 SensorDataQoS 订阅 `imu_topic`（默认 `/imu/data`），将单 IMU 数据写入必填参数 `output_file` 指定的新文件。输出兼容离线 `real` 与 `imu_replay`，保存消息时间戳、设备四元数、比力与角速度。文件已存在时拒绝启动；Ctrl+C 停止。姿态不可用时以单位四元数占位，非有限、非单位四元数及非递增时间戳样本丢弃。用法见根目录 README。

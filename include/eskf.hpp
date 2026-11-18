@@ -23,6 +23,9 @@ class ErrorStateKalmanFilter
         acceleration = V3D::Zero();
     SixAxisAhrs attitude;
     Matrix15d P = Matrix15d::Zero(), transition = Matrix15d::Identity();
+    Matrix15d process_noise = Matrix15d::Zero();
+    Eigen::Matrix<double, 15, 12> noise_mapping = Eigen::Matrix<double, 15, 12>::Zero();
+    Eigen::Matrix<double, 12, 1> noise_variance = Eigen::Matrix<double, 12, 1>::Zero();
     Vector15d injection = Vector15d::Zero();
     ErrorStateKalmanFilter(const Json& config, bool covariance = true,
                            bool constantAcceleration = false, bool prescribed = false,
