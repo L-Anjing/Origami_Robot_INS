@@ -505,9 +505,10 @@ Json scenario(const Json& c, const std::vector<SimulationFrame>& data, const Mod
     return summary;
 }
 } // namespace
-Json run_multi_imu_experiment(const Json& c, const std::string& path, const std::string& output,
+Json run_multi_imu_experiment(const Json& input, const std::string& path, const std::string& output,
                               const std::string& model_path, bool suite)
 {
+    const Json c = normalize_multi_imu_config(input);
     auto data = read_simulation(path, c.at("sample_rate_hz"));
     auto model = load_robot_model(model_path, c.at("robot").at("geometry"));
     if (!suite)
@@ -552,6 +553,8 @@ Json run_multi_imu_experiment(const Json& c, const std::string& path, const std:
             continue;
         Json cfg = c;
         cfg["noise"]["seed"] = 42;
+        cfg["joint_filter"].erase("imu_count");
+        cfg["joint_filter"].erase("compact_prefix_state");
         cfg["joint_filter"]["participating_imus"] = subset;
         std::string name = "subset";
         for (auto i : subset)

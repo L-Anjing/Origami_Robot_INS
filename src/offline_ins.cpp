@@ -30,9 +30,18 @@ int main(int argc, char** argv)
         std::string task = argv[1];
         if (task == "multi-imu-run" || task == "multi-imu-suite")
         {
-            if (argc != 6)
+            if (argc != 6 && !(task == "multi-imu-run" && argc == 8 &&
+                               std::string(argv[6]) == "--imu-count"))
                 throw std::invalid_argument(
-                    "Usage: origami_ins multi-imu-suite CONFIG DATA OUTPUT MODEL");
+                    "Usage: origami_ins multi-imu-run CONFIG DATA OUTPUT MODEL [--imu-count N]"
+                    " (multi-imu-suite uses CONFIG only)");
+            if (argc == 8)
+            {
+                std::string value = argv[7];
+                if (value.size() != 1 || value[0] < '1' || value[0] > '6')
+                    throw std::invalid_argument("--imu-count must be an integer in [1, 6]");
+                c["joint_filter"]["imu_count"] = value[0] - '0';
+            }
             auto report = origami::run_multi_imu_experiment(c, argv[3], argv[4], argv[5],
                                                             task == "multi-imu-suite");
             std::cout << "Saved joint filter results; cases=" << report.value("case_count", 1)

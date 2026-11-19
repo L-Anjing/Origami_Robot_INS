@@ -28,6 +28,18 @@ int main(int argc, char** argv)
             throw std::runtime_error("B1 must accept ZUPT for a verified static S0");
         if (report.at("metrics").at("B1_ZUPT").at("ate_m").get<double>() > 1e-10)
             throw std::runtime_error("Static B1 navigation error");
+        for (int count = 1; count <= 6; ++count)
+        {
+            c["joint_filter"]["imu_count"] = count;
+            auto subset = origami::run_multi_imu_experiment(
+                c, paths.at(2), (temporary / ("count_" + std::to_string(count))).string(),
+                std::string(argv[1]) + "/robot/zbot_crack_L2.xml", false);
+            if (subset.at("runtime").at("D3a").at("state_dimension") != 15 * count ||
+                subset.at("runtime").at("D3b").at("state_dimension") != 15 * count)
+                throw std::runtime_error("Experiment must honor imu_count");
+            if (count < 6 && subset.at("runtime").contains("D4"))
+                throw std::runtime_error("D4 requires six IMUs");
+        }
         std::filesystem::remove_all(temporary);
         std::cout << "Joint experiment B1 detector parameter order and accepted ZUPT passed\n";
         return 0;

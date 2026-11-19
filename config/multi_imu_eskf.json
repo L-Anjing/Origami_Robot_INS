@@ -201,14 +201,7 @@
     "position_nis_limit": 16.27,
     "axis_nis_limit": 13.82,
     "update_rate_hz": 100,
-    "participating_imus": [
-      0,
-      1,
-      2,
-      3,
-      4,
-      5
-    ]
+    "imu_count": 6
   },
   "experiment": {
     "seeds": [

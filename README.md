@@ -32,6 +32,15 @@ build/standalone/origami_ins multi-imu-run config/multi_imu_eskf.json \
   data/data_L_qawp_20261030.txt outputs/joint robot/zbot_crack_L2.xml
 ```
 
+IMU 数量在 `config/multi_imu_eskf.json` 的 `joint_filter.imu_count` 配置，取整数 1–6，默认 6。N 表示使用连续的 S0…S(N−1)，默认协方差为 15N 维（开启六 IMU 形态状态时为 95 维）。单次运行可通过命令行覆盖：
+
+```bash
+build/standalone/origami_ins multi-imu-run config/multi_imu_eskf.json \
+  data/data_L_qawp_20261030.txt outputs/joint_3imu robot/zbot_crack_L2.xml --imu-count 3
+```
+
+`imu_count` 优先于旧的 `participating_imus` 数组；要使用 `[0,5]` 等非连续子集，请删除 `imu_count` 并配置该数组，此时保留原 90 维布局。`compact_prefix_state=false` 可显式保留固定 90 维作耗时对照。`multi-imu-suite` 的数量从配置读取，其子集对照仍按 `experiment.imu_subsets` 运行。数据输入仍使用六路仿真格式；数量参数控制联合滤波参与节点，实验中的其他六路对照不随之裁剪。
+
 输出导航误差 CSV、指标与汇总 JSON 等文件到 `outputs/joint/`。用 MATLAB 绘制轨迹：
 
 ```matlab

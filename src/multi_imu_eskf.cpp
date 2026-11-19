@@ -13,10 +13,29 @@ double seconds(Clock::time_point t)
     return std::chrono::duration<double>(Clock::now() - t).count();
 }
 } // namespace
-MultiImuEskf::MultiImuEskf(const Json& c, const Model& model)
-    : config_(c), model_(model),
-      shape_state_(c.at("joint_filter").value("enable_shape_state", false))
+Json normalize_multi_imu_config(const Json& input)
 {
+    Json c = input;
+    auto& options = c.at("joint_filter");
+    if (options.contains("imu_count"))
+    {
+        const auto& value = options.at("imu_count");
+        if (!value.is_number_integer() || value.get<double>() < 1 || value.get<double>() > 6)
+            throw std::invalid_argument("joint_filter.imu_count must be an integer in [1, 6]");
+        int count = value.get<int>();
+        options["participating_imus"] = Json::array();
+        for (int i = 0; i < count; ++i)
+            options["participating_imus"].push_back(i);
+        if (!options.contains("compact_prefix_state"))
+            options["compact_prefix_state"] = true;
+    }
+    return c;
+}
+MultiImuEskf::MultiImuEskf(const Json& input, const Model& model)
+    : config_(normalize_multi_imu_config(input)), model_(model),
+      shape_state_(config_.at("joint_filter").value("enable_shape_state", false))
+{
+    const auto& c = config_;
     const auto& options = c.at("joint_filter");
     if (options.value("enable_joint_velocity_constraint", false) ||
         options.value("enable_contact_update", false))
@@ -35,6 +54,14 @@ MultiImuEskf::MultiImuEskf(const Json& c, const Model& model)
             if (!selected)
                 throw std::invalid_argument(
                     "D4 currently requires six IMUs; missing internal angles are not invented");
+    // Optional compact prefix layout preserves the selected marginal of the full filter.
+    if (options.value("compact_prefix_state", false))
+    {
+        node_count_ = options.at("participating_imus").size();
+        for (int i = 0; i < 6; ++i)
+            if (selected_[i] != (i < node_count_))
+                throw std::invalid_argument("Compact layout requires contiguous S0..S(N-1)");
+    }
     auto qv = c.at("initial_root_quaternion_wxyz");
     Quaterniond q(qv[0].get<double>(), qv[1].get<double>(), qv[2].get<double>(),
                   qv[3].get<double>());
@@ -48,14 +75,14 @@ MultiImuEskf::MultiImuEskf(const Json& c, const Model& model)
     auto velocities = initial_node_velocities(
         model, shape, rates, q * vector3(c.at("initial_root_angular_velocity_rad_s")),
         vector3(c.at("initial_velocity_m_s")));
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < node_count_; ++i)
     {
         nodes.emplace_back(c, true, false, false, !c.value("root_ahrs_feedback", false));
         nodes[i].p = vector3(c.at("robot").at("initial_root_W_m")) + shape.position[i];
         nodes[i].v = velocities[i];
         nodes[i].attitude.q = shape.rotation[i];
     }
-    int n = shape_state_ ? 95 : 90;
+    int n = shape_state_ ? 95 : 15 * node_count_;
     P = Eigen::MatrixXd::Zero(n, n);
     Eigen::MatrixXd B = Eigen::MatrixXd::Zero(n, 45);
     Eigen::VectorXd variance = Eigen::VectorXd::Zero(45);
@@ -64,7 +91,7 @@ MultiImuEskf::MultiImuEskf(const Json& c, const Model& model)
                      s.at("attitude_deg").get<double>() * pi / 180};
     for (int j = 0; j < 9; ++j)
         variance[j] = stds[j / 3] * stds[j / 3];
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < node_count_; ++i)
     {
         B.block<3, 3>(15 * i, 0).setIdentity();
         B.block<3, 3>(15 * i, 6) = -q.toRotationMatrix() * skew(q.conjugate() * shape.position[i]);
@@ -82,17 +109,18 @@ MultiImuEskf::MultiImuEskf(const Json& c, const Model& model)
     double rho = c.at("noise").value("common_bias_correlation", 0.);
     if (rho < 0 || rho > 1)
         throw std::invalid_argument("Invalid common bias correlation");
-    for (int i = 0; i < 6; ++i)
-        for (int j = 0; j < 6; ++j)
+    for (int i = 0; i < node_count_; ++i)
+        for (int j = 0; j < node_count_; ++j)
             if (i != j)
                 for (int k = 0; k < 6; ++k)
                     P(15 * i + 9 + k, 15 * j + 9 + k) = rho * variance[9 + 6 * i + k];
     phi_ = Eigen::MatrixXd::Identity(n, n);
     process_noise_ = Eigen::MatrixXd::Zero(n, n);
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < node_count_; ++i)
         nodes[i].P = P.block<15, 15>(15 * i, 15 * i);
     for (int j = 0; j < 5; ++j)
-        if (hinge_position(nodes, model.joints[j], j, n).value.norm() > 1e-10)
+        if (selected_[model.joints[j].parent] && selected_[model.joints[j].child] &&
+            hinge_position(nodes, model.joints[j], j, n).value.norm() > 1e-10)
             throw std::runtime_error("Inconsistent initial hinge geometry");
 }
 void MultiImuEskf::propagate(const ImuMeasurements& sample, double dt)
@@ -102,7 +130,7 @@ void MultiImuEskf::propagate(const ImuMeasurements& sample, double dt)
     process_noise_.setZero();
     std::vector<Eigen::Triplet<double>> entries;
     Eigen::Matrix<double, 5, 72> angle_noise = Eigen::Matrix<double, 5, 72>::Zero();
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < node_count_; ++i)
     {
         if (!selected_[i])
         {
@@ -148,7 +176,7 @@ void MultiImuEskf::propagate(const ImuMeasurements& sample, double dt)
             }
         }
         // A single physical gyro noise column drives both node attitude and adjacent joint angles.
-        for (int i = 0; i < 6; ++i)
+        for (int i = 0; i < node_count_; ++i)
         {
             auto A = angle_noise.block<5, 12>(0, 12 * i);
             auto diagonal = nodes[i].noise_variance.asDiagonal();
@@ -160,8 +188,8 @@ void MultiImuEskf::propagate(const ImuMeasurements& sample, double dt)
     }
     double rho = config_.at("noise").value("common_bias_correlation", 0.);
     if (rho > 0)
-        for (int i = 0; i < 6; ++i)
-            for (int j = 0; j < 6; ++j)
+        for (int i = 0; i < node_count_; ++i)
+            for (int j = 0; j < node_count_; ++j)
                 if (i != j && selected_[i] && selected_[j])
                 {
                     Eigen::Matrix<double, 6, 1> d;
@@ -178,7 +206,7 @@ void MultiImuEskf::propagate(const ImuMeasurements& sample, double dt)
     P = (phi * left.transpose()).transpose().eval() + process_noise_;
     P = (.5 * (P + P.transpose())).eval();
     phi_ = Eigen::MatrixXd(phi);
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < node_count_; ++i)
         nodes[i].P = P.block<15, 15>(15 * i, 15 * i);
     ++sample_;
     runtime.propagation_s += seconds(start);
@@ -186,7 +214,7 @@ void MultiImuEskf::propagate(const ImuMeasurements& sample, double dt)
 }
 void MultiImuEskf::inject(const Eigen::VectorXd& dx)
 {
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < node_count_; ++i)
     {
         auto& state = nodes[i];
         state.p += dx.segment<3>(15 * i);
@@ -199,14 +227,14 @@ void MultiImuEskf::inject(const Eigen::VectorXd& dx)
         for (int j = 0; j < 5; ++j)
             angles[j] += dx[90 + j];
     // Reset every orientation row and column, including all node-node and node-angle cross blocks.
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < node_count_; ++i)
     {
         M3D J = right_jacobian(dx.segment<3>(15 * i + 6));
         P.middleRows(15 * i + 6, 3) = (J * P.middleRows(15 * i + 6, 3)).eval();
         P.middleCols(15 * i + 6, 3) = (P.middleCols(15 * i + 6, 3) * J.transpose()).eval();
     }
     P = (.5 * (P + P.transpose())).eval();
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < node_count_; ++i)
         nodes[i].P = P.block<15, 15>(15 * i, 15 * i);
 }
 void MultiImuEskf::update(double time)
@@ -305,7 +333,7 @@ void MultiImuEskf::update(double time)
             throw std::runtime_error("Nonfinite joint filter update");
         inject(dx);
         double bias = 0;
-        for (int i = 0; i < 6; ++i)
+        for (int i = 0; i < node_count_; ++i)
             bias += dx.segment<6>(15 * i + 9).squaredNorm();
         for (auto& record : last_innovations)
             if (record.accepted)
@@ -323,8 +351,8 @@ Json MultiImuEskf::diagnostics() const
     if (eig.info() != Eigen::Success || !P.allFinite())
         throw std::runtime_error("Invalid global covariance");
     double cross = 0, angular = 0;
-    for (int i = 0; i < 6; ++i)
-        for (int j = 0; j < 6; ++j)
+    for (int i = 0; i < node_count_; ++i)
+        for (int j = 0; j < node_count_; ++j)
             if (i != j)
                 cross += P.block<15, 15>(15 * i, 15 * j).squaredNorm();
     if (shape_state_)

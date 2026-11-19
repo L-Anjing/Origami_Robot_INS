@@ -1,0 +1,12 @@
+{
+  "purpose": "Deployment preflight metadata; not a firmware or filter configuration",
+  "target": "STM32F405",
+  "cpu_hz": 168000000,
+  "sram_bytes": 131072,
+  "ccm_bytes": 65536,
+  "imu_rate_hz": 1000,
+  "constraint_rate_hz": 100,
+  "preferred_scalar": "float32",
+  "cross_compile_verified": false,
+  "hardware_deadline_verified": false
+}

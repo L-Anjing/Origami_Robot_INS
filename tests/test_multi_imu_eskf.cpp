@@ -236,6 +236,40 @@ int main(int argc, char** argv)
             d.update(.001);
             d.diagnostics();
         }
+        if (test == 21)
+        {
+            for (int count = 1; count <= 6; ++count)
+            {
+                auto cfg = c;
+                cfg["joint_filter"]["imu_count"] = count;
+                MultiImuEskf compact(cfg, model);
+                cfg["joint_filter"]["compact_prefix_state"] = false;
+                MultiImuEskf full(cfg, model);
+                require(compact.P.rows() == 15 * count, "Count must resize covariance");
+                require(compact.nodes.size() == size_t(count), "Count must resize nodes");
+                for (int k = 0; k < 30; ++k)
+                {
+                    compact.propagate(m, .001); full.propagate(m, .001);
+                    if ((k + 1) % 10 == 0) { compact.update((k+1)*.001); full.update((k+1)*.001); }
+                }
+                require((compact.P - full.P.topLeftCorner(15*count,15*count)).norm() < 1e-10,
+                        "Compact marginal covariance parity");
+                compact.diagnostics();
+            }
+            for (Json invalid : {Json(0), Json(7), Json(2.5), Json("3"), Json(true)})
+            {
+                auto cfg = c; cfg["joint_filter"]["imu_count"] = invalid;
+                bool rejected = false;
+                try { MultiImuEskf bad(cfg, model); }
+                catch (const std::invalid_argument&) { rejected = true; }
+                require(rejected, "Invalid count must be rejected");
+            }
+            auto cfg = c; cfg["joint_filter"].erase("imu_count");
+            cfg["joint_filter"]["participating_imus"] = {0,5};
+            MultiImuEskf legacy(cfg, model);
+            require(legacy.active(5) && !legacy.active(1) && legacy.P.rows() == 90,
+                    "Legacy noncontiguous subset support");
+        }
         std::cout << "T" << test << " passed\n";
         return 0;
     }
